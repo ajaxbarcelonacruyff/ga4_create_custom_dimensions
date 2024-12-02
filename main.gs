@@ -30,7 +30,7 @@ function getCustomDimensionsFromSheet(){
 */
 function createCustomDimension(propertyId, customDimensionData){
 /* 
-propertyId = 3234568;
+propertyId = 1234567;
 customDimensionData= {
   "displayName": "customer_status",
   "parameterName": "customer_status",
