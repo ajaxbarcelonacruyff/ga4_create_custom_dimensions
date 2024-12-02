@@ -1,0 +1,2 @@
+# ga4_create_custom_dimensions
+複数のGA4プロパティにカスタムディメンションを一括作成
