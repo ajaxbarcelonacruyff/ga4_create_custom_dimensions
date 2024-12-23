@@ -1,42 +1,115 @@
-# 複数のGA4プロパティにカスタムディメンションを一括作成
+> [!Note]
+> This article contains information as of July 2022. Please refer to the official website for the latest updates.
 
-[GA4で複数プロパティを自動作成](https://github.com/ajaxbarcelonacruyff/ga4_create_multi_properties/blob/e8858e91d93c028ee908a33d22c38fdd4c4f11ac/README.md)にて、GA4のプロパティを一括作成する方法を紹介しました。今回はその続きで、各プロパティにカスタムディメンションを一括作成する方法を紹介します。
+# Bulk Creating Custom Dimensions Across Multiple GA4 Properties
 
-手順は以下になります。
+In the [previous article](https://github.com/ajaxbarcelonacruyff/ga4_create_multi_properties), we discussed how to bulk create GA4 properties. This time, we will extend that process to create custom dimensions for each property in bulk.
 
-1. カスタムディメンションのリストを作成
-2. 対象のGA4プロパティ一覧を読み込む（今回は省略）
-3. カスタムディメンションのリストを読み込み一括作成
+## Steps
 
-# カスタムディメンションのリストを作成
+1. Create a list of custom dimensions.
+2. Read the list of target GA4 properties (skipped in this guide).
+3. Read the custom dimensions list and create them in bulk.
 
-作成するカスタムディメンションの一覧をGoogle Sheetに作成します。
+# Creating a List of Custom Dimensions
 
-- シート名：customdimensions
-- A列：カスタムディメンション名
-- B列：スコープ（EVENT、USER）
+Prepare a list of custom dimensions in Google Sheets.
 
-# Google Apps Scriptの作成
-今回もGoogle Analytics Admin APIをを使用しますが、この設定方法は[前回の記事]((https://github.com/ajaxbarcelonacruyff/ga4_create_multi_properties/blob/e8858e91d93c028ee908a33d22c38fdd4c4f11ac/README.md))を参照願います。
+- **Sheet Name:** customdimensions
+- **Column A:** Custom dimension name
+- **Column B:** Scope (EVENT, USER)
 
-## 対象のGA4プロパティ一覧を読み込む
-こちらはGoogle SheetにGA4プロパティの一覧を作成し、そのシートを読み込むだけなので、今回は省略して、Google Apps Script内の配列変数に直接入れます。
+![image.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/3939399/fa5083a1-39b8-962b-e5e7-de96a40af336.png)
 
-## カスタムディメンションの一覧を読み込む
-先ほどGoogle Sheetに作成したカスタムディメンションの一覧を読み込む関数getCustomDimensionsFromSheet()を作成します。
+# Writing the Google Apps Script
 
-このgetCustomDimensionsFromSheet()関数は下記の属性を含めた変数の配列を返します。
+We will again use the Google Analytics Admin API. For instructions on setting it up, refer to [the previous article](https://github.com/ajaxbarcelonacruyff/ga4_create_multi_properties).
 
-例：
-- displayName: “customer_status”
-- parameterName: “customer_status”
-- scope: “USER”
+## Reading the List of Target GA4 Properties
 
-## GA4プロパティにカスタムディメンションを作成
+This step involves reading a list of GA4 properties from Google Sheets. For simplicity, this part is skipped here, and the property IDs are directly added to an array in the script.
 
-上記で取得した情報をGA4プロパティに1つずつ作成します。ここでは1つのカスタムディメンションを作成する関数createCustomDimension()を作成します。
+## Reading the List of Custom Dimensions
 
-最後に、上記をGA4プロパティ個数×カスタムディメンション個数分繰り返すmain()関数を作成します。
+Create a function `getCustomDimensionsFromSheet()` to read the list of custom dimensions from the Google Sheets file.
 
+This function returns an array of objects with the following attributes:
 
+```javascript
+const FILEKEY = "abcdefghijklmno"; // Google Sheet key from the URL
 
+function getCustomDimensionsFromSheet() {
+  const sheetName = "customdimensions";
+  const spreadsheet = SpreadsheetApp.openById(FILEKEY);
+  const sheet = spreadsheet.getSheetByName(sheetName);
+  const lastRow = sheet.getLastRow(); 
+  const data = sheet.getRange(2, 1, lastRow, 2).getValues();
+  const result = [];
+  for (let i = 0; i < data.length; i++) {
+    if (!data[i][0]) break;
+    result.push({
+      "displayName": data[i][0],
+      "parameterName": data[i][0],
+      "scope": data[i][1] // e.g., "EVENT"
+    });
+  }
+  return result;
+}
+```
+
+Example output:
+
+- `displayName`: "customer_status"
+- `parameterName`: "customer_status"
+- `scope`: "USER"
+
+## Creating Custom Dimensions in GA4 Properties
+
+Using the above information, create a function `createCustomDimension()` that adds a custom dimension to a specific GA4 property.
+
+```javascript
+function createCustomDimension(propertyId, customDimensionData) {
+/*
+propertyId = 3234568;
+customDimensionData = {
+  "displayName": "customer_status",
+  "parameterName": "customer_status",
+  "scope": "USER" //"EVENT"
+};
+*/
+  return AnalyticsAdmin.Properties.CustomDimensions.create(customDimensionData, `properties/${propertyId}`);
+}
+```
+
+## Looping Through Properties and Dimensions
+
+Finally, create a `main()` function that iterates through all GA4 properties and creates custom dimensions for each.
+
+```javascript
+function main() {
+  const properties = [
+    3234568,
+    3234555,
+    3234542,
+    3234609,
+    3234553,
+    3234563,
+    3234584
+  ]; // For simplicity, the script to load property IDs is skipped and IDs are added directly
+
+  for (const property of properties) {
+    const customDimensions = getCustomDimensionsFromSheet();
+    for (const cd of customDimensions) {
+      try {
+        console.log(createCustomDimension(property, cd));
+      } catch (e) {
+        console.log(e);
+      }
+    }
+  }
+}
+```
+
+Executing the above functions will create custom dimensions for each GA4 property.
+
+![image.png](https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/3939399/4f81a0ed-77ad-4e41-3565-918b41f7530a.png)
